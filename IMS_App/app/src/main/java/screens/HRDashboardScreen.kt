@@ -124,9 +124,18 @@ fun HRDashboardScreen(navController: NavController) {
                         Text("View All", color = TealAccent, fontSize = 12.sp, modifier = Modifier.clickable { navController.navigate("hr_employee_list") })
                     }
                     Spacer(modifier = Modifier.height(16.dp))
-                    EmployeeMiniStub("AS", "Alice Smith", "Computer Science • Professor", Color(0xFF1E88E5))
-                    Spacer(modifier = Modifier.height(12.dp))
-                    EmployeeMiniStub("BJ", "Bob Johnson", "Administration • Registrar", Color(0xFFFFB300))
+                    val employeeList = users.filter { it.role == "Employee" }.take(3)
+                    if (employeeList.isEmpty()) {
+                        Text("No employees found", color = TextGray, fontSize = 12.sp)
+                    } else {
+                        employeeList.forEachIndexed { index, user ->
+                            val initials = user.name.split(" ").filter { it.isNotEmpty() }.take(2).joinToString("") { it[0].toString().uppercase() }
+                            EmployeeMiniStub(initials, user.name, "${user.department} • ${user.role}", Color(0xFF1E88E5))
+                            if (index < employeeList.size - 1) {
+                                Spacer(modifier = Modifier.height(12.dp))
+                            }
+                        }
+                    }
                 }
             }
         }

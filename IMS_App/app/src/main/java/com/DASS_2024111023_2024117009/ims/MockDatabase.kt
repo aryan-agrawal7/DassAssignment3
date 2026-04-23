@@ -7,8 +7,8 @@ import java.util.Date
 import java.util.Locale
 
 // --- DATA CLASSES ---
-data class User(val id: String, val pass: String, val role: String, val name: String, val department: String)
-data class Leave(val id: String, val empId: String, val type: String, val start: String, val end: String, val reason: String, val attachment: String?, var hrStatus: String = "Pending", var adminStatus: String = "Pending", val appliedDate: String = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(Date())) {
+data class User(val id: String, val pass: String, val role: String, val name: String, val department: String, val customData: Map<String, String> = emptyMap())
+data class Leave(val id: String, val empId: String, val type: String, val start: String, val end: String, val reason: String, val attachment: String?, val attachmentName: String? = null, var hrStatus: String = "Pending", var adminStatus: String = "Pending", val appliedDate: String = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())) {
     val overallStatus: String get() = if (hrStatus == "Rejected" || adminStatus == "Rejected") "Rejected" else if (hrStatus == "Approved" && adminStatus == "Approved") "Approved" else "Pending"
 }
 data class Payslip(val id: String, val empId: String, val month: String, val basic: String, val allowances: String, val deductions: String, val net: String, var status: String = "Pending")
@@ -24,26 +24,28 @@ object MockDatabase {
 
     // LIVE DATA FLOWS (UI will auto-update when these change)
     val users = MutableStateFlow(listOf(
-        User("admin", "123", "Admin", "Alexander Pierce", "System Administrator"),
-        User("hr", "123", "HR", "Alice Smith", "Human Resources"),
-        User("employee", "123", "Employee", "Dr. Abhishek", "Engineering"),
-        User("student", "123", "Student", "Yash Tripathi", "UG 2024")
+        User("admin", "123", "Admin", "Alexander Pierce", "System Administrator", mapOf("Email Address" to "alex.admin@ims.edu", "Phone Number" to "+1 234 567 890")),
+        User("hr", "123", "HR", "Alice Smith", "Human Resources", mapOf("Email Address" to "alice.hr@ims.edu", "Phone Number" to "+1 987 654 321")),
+        User("employee", "123", "Employee", "Dr. Abhishek", "Engineering", mapOf("Email Address" to "abhishek@ims.edu", "Phone Number" to "+1 555 000 111")),
+        User("student", "123", "Student", "Yash Tripathi", "UG 2024", mapOf("Email Address" to "yash@ims.edu", "Phone Number" to "+1 222 333 444"))
     ))
 
     val leaves = MutableStateFlow(listOf(
-        Leave("L1", "employee", "Sick Leave", "May 12, 2024", "May 14, 2024", "Viral Fever", "medical_cert.pdf", "Approved", "Approved"),
-        Leave("L2", "employee", "Casual Leave", "June 05, 2024", "June 06, 2024", "Family function", null, "Approved", "Pending")
+        Leave("L1", "employee", "Sick Leave", "12/05/2024", "14/05/2024", "Viral Fever", null, null, "Approved", "Approved"),
+        Leave("L2", "employee", "Casual Leave", "05/06/2024", "06/06/2024", "Family function", null, null, "Approved", "Pending")
     ))
 
     val payslips = MutableStateFlow(listOf(
-        Payslip("P1", "employee", "March 2024", "5000", "500", "100", "5400", "Approved"),
-        Payslip("P2", "employee", "April 2024", "5000", "500", "100", "5400", "Approved")
+        Payslip("P1", "employee", "03/2024", "5000", "500", "100", "5400", "Approved"),
+        Payslip("P2", "employee", "04/2024", "5000", "500", "100", "5400", "Approved")
     ))
 
     val admissionTemplate = MutableStateFlow(listOf(
         FormField("f1", "Full Name", "Short Text", true),
         FormField("f2", "Department", "Dropdown", true, options = listOf("Engineering", "Academics", "Administration")),
-        FormField("f3", "Base Salary", "Number", true)
+        FormField("f3", "Email Address", "Short Text", true),
+        FormField("f4", "Phone Number", "Number", true),
+        FormField("f5", "Base Salary", "Number", true)
     ))
 
     val studentAdmissionTemplate = MutableStateFlow(listOf(
@@ -61,8 +63,8 @@ object MockDatabase {
     ))
 
     val allNews = MutableStateFlow(listOf(
-        News("N1", "End of Semester Exams", "The final exams start next week. Check schedules.", "Admin", "May 10, 2024", 0, order = 1L),
-        News("N2", "New Library Rules", "Extended library hours until 2 AM.", "Admin", "May 12, 2024", 2, listOf("employee", "hr"), order = 2L)
+        News("N1", "End of Semester Exams", "The final exams start next week. Check schedules.", "Admin", "10/05/2024", 0, order = 1L),
+        News("N2", "New Library Rules", "Extended library hours until 2 AM.", "Admin", "12/05/2024", 2, listOf("employee", "hr"), order = 2L)
     ))
 
     fun addLeave(leave: Leave) = leaves.update { it + leave }
@@ -112,6 +114,26 @@ object MockDatabase {
     
     fun deleteNews(newsId: String) = allNews.update { list -> list.filter { it.id != newsId } }
 
+    fun updateNews(newsId: String, newTitle: String, newContent: String, newImageUri: String?) {
+        allNews.update { list ->
+            val existing = list.find { it.id == newsId }
+            if (existing != null) {
+                val maxOrder = list.maxOfOrNull { it.order } ?: 0L
+                val updatedNews = existing.copy(
+                    title = newTitle,
+                    content = newContent,
+                    imageUri = newImageUri,
+                    time = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date()) + " (edited)",
+                    order = maxOrder + 1
+                )
+                // Remove old version and add updated one at the start (to be top in sorted list)
+                listOf(updatedNews) + list.filter { it.id != newsId }
+            } else {
+                list
+            }
+        }
+    }
+
     fun toggleNewsLike(newsId: String, userId: String) {
         allNews.update { list ->
             list.map { news ->
@@ -146,4 +168,17 @@ object MockDatabase {
             }
         }
     }
+
+    // --- LEAVE UTILS (COUNT BASED) ---
+    const val MAX_LEAVE_REQUESTS = 10
+
+    fun getLeaveMetrics(empId: String): LeaveMetrics {
+        val userLeaves = leaves.value.filter { it.empId == empId }
+        val approved = userLeaves.count { it.overallStatus == "Approved" }
+        val pending = userLeaves.count { it.overallStatus == "Pending" }
+        val balance = (MAX_LEAVE_REQUESTS - approved - pending).coerceAtLeast(0)
+        return LeaveMetrics(MAX_LEAVE_REQUESTS, balance, pending, approved)
+    }
 }
+
+data class LeaveMetrics(val total: Int, val balance: Int, val pending: Int, val approved: Int)

@@ -44,6 +44,13 @@ fun AdminMainScreen(onLogout: () -> Unit = {}) {
             composable("admin_finance") { AdminFinanceScreen(navController) }
             composable("news_list") { InstituteNewsScreen(navController, isAdmin = true) }
             composable("admin_create_news") { AdminCreateNewsScreen(navController) }
+            composable(
+                route = "admin_edit_news/{newsId}",
+                arguments = listOf(navArgument("newsId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val newsId = backStackEntry.arguments?.getString("newsId") ?: ""
+                AdminEditNewsScreen(navController, newsId)
+            }
             composable("global_search") { GlobalSearchScreen(navController) }
             // NEW ROUTE
             composable(
@@ -64,8 +71,9 @@ fun AdminBottomNav(navController: NavHostController) {
     val currentRoute = navBackStackEntry?.destination?.route
 
     // Hide bottom bar on sub-screens
-    if (currentRoute in listOf("admin_settings", "messages", "admin_create_news", "admin_customize_admission", "admin_customize_student_admission", "admin_student_admission", "admin_leave_approvals", "admin_finance", "global_search") ||
-        currentRoute?.startsWith("news_detail") == true) return
+    if (currentRoute in listOf("admin_settings", "messages", "admin_create_news", "admin_edit_news", "admin_customize_admission", "admin_customize_student_admission", "admin_student_admission", "admin_leave_approvals", "admin_finance", "global_search") ||
+        currentRoute?.startsWith("news_detail") == true ||
+        currentRoute?.startsWith("admin_edit_news") == true) return
 
     // FIXED: Keeps Dashboard highlighted for sub-routes
     val dashboardSubRoutes = listOf("news_list", "admin_finance", "admin_customize_admission", "admin_customize_student_admission", "admin_leave_approvals", "admin_student_admission")

@@ -1,6 +1,7 @@
 package com.DASS_2024111023_2024117009.ims.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
@@ -12,6 +13,13 @@ import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Description
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import android.net.Uri
+import android.provider.OpenableColumns
+import android.content.Context
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,11 +35,27 @@ import com.DASS_2024111023_2024117009.ims.ui.theme.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EmployeeApplyLeaveScreen(navController: NavController) {
+    val context = LocalContext.current
     var reason by remember { mutableStateOf("") }
     var leaveType by remember { mutableStateOf("Sick Leave") }
     var startDate by remember { mutableStateOf("") }
     var endDate by remember { mutableStateOf("") }
-    var attachedFile by remember { mutableStateOf<String?>(null) }
+    var attachedUri by remember { mutableStateOf<Uri?>(null) }
+    var attachedFileName by remember { mutableStateOf<String?>(null) }
+
+    var expanded by remember { mutableStateOf(false) }
+    val leaveTypes = listOf("Sick Leave", "Casual Leave", "Annual Leave", "Maternity/Paternity Leave")
+
+    val filePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        attachedUri = uri
+        uri?.let {
+            attachedFileName = getFileName(context, it)
+        }
+    }
+
+    val metrics = com.DASS_2024111023_2024117009.ims.MockDatabase.getLeaveMetrics(com.DASS_2024111023_2024117009.ims.MockDatabase.currentUser?.id ?: "")
 
     LazyColumn(modifier = Modifier.fillMaxSize().background(BackgroundDark).padding(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
         item {
@@ -45,19 +69,51 @@ fun EmployeeApplyLeaveScreen(navController: NavController) {
         item {
             Text("Leave Type", color = TextWhite, fontSize = 12.sp)
             Spacer(modifier = Modifier.height(8.dp))
-            TextField(
-                value = leaveType, onValueChange = { leaveType = it },
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = false) },
-                colors = TextFieldDefaults.colors(focusedContainerColor = InputFieldDark, unfocusedContainerColor = InputFieldDark, focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent, focusedTextColor = TextWhite, unfocusedTextColor = TextWhite),
-                shape = RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth()
-            )
+            ExposedDropdownMenuBox(
+                expanded = expanded,
+                onExpandedChange = { expanded = !expanded },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                TextField(
+                    value = leaveType, 
+                    onValueChange = {}, 
+                    readOnly = true,
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = InputFieldDark, 
+                        unfocusedContainerColor = InputFieldDark, 
+                        focusedIndicatorColor = Color.Transparent, 
+                        unfocusedIndicatorColor = Color.Transparent, 
+                        focusedTextColor = TextWhite, 
+                        unfocusedTextColor = TextWhite
+                    ),
+                    shape = RoundedCornerShape(8.dp), 
+                    modifier = Modifier.fillMaxWidth().menuAnchor()
+                )
+                ExposedDropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false },
+                    modifier = Modifier.background(InputFieldDark)
+                ) {
+                    leaveTypes.forEach { type ->
+                        DropdownMenuItem(
+                            text = { Text(type, color = TextWhite) },
+                            onClick = {
+                                leaveType = type
+                                expanded = false
+                            },
+                            colors = MenuDefaults.itemColors()
+                        )
+                    }
+                }
+            }
         }
 
         item {
             Text("Start Date", color = TextWhite, fontSize = 12.sp)
             Spacer(modifier = Modifier.height(8.dp))
             TextField(
-                value = startDate, onValueChange = { startDate = it }, placeholder = { Text("mm/dd/yyyy", color = TextGray) },
+                value = startDate, onValueChange = { startDate = it }, placeholder = { Text("dd/mm/yyyy", color = TextGray) },
                 trailingIcon = { Icon(Icons.Default.CalendarToday, contentDescription = null, tint = TextGray, modifier = Modifier.size(16.dp)) },
                 colors = TextFieldDefaults.colors(focusedContainerColor = InputFieldDark, unfocusedContainerColor = InputFieldDark, focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent, focusedTextColor = TextWhite),
                 shape = RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth()
@@ -68,7 +124,7 @@ fun EmployeeApplyLeaveScreen(navController: NavController) {
             Text("End Date", color = TextWhite, fontSize = 12.sp)
             Spacer(modifier = Modifier.height(8.dp))
             TextField(
-                value = endDate, onValueChange = { endDate = it }, placeholder = { Text("mm/dd/yyyy", color = TextGray) },
+                value = endDate, onValueChange = { endDate = it }, placeholder = { Text("dd/mm/yyyy", color = TextGray) },
                 trailingIcon = { Icon(Icons.Default.CalendarToday, contentDescription = null, tint = TextGray, modifier = Modifier.size(16.dp)) },
                 colors = TextFieldDefaults.colors(focusedContainerColor = InputFieldDark, unfocusedContainerColor = InputFieldDark, focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent, focusedTextColor = TextWhite),
                 shape = RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth()
@@ -95,7 +151,7 @@ fun EmployeeApplyLeaveScreen(navController: NavController) {
             // Upload Box
             Surface(
                 shape = RoundedCornerShape(12.dp), color = InputFieldDark, modifier = Modifier.fillMaxWidth().height(120.dp),
-                onClick = { attachedFile = "document_${System.currentTimeMillis()}.pdf" }
+                onClick = { filePickerLauncher.launch("*/*") }
             ) {
                 Column(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
                     Surface(shape = CircleShape, color = CardDark, modifier = Modifier.size(40.dp)) {
@@ -104,14 +160,14 @@ fun EmployeeApplyLeaveScreen(navController: NavController) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Text("Upload documents", color = TextWhite, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text("PDF, JPG or PNG (Max. 5MB)", color = TextGray, fontSize = 10.sp)
+                    Text("Any file type (Max. 5MB)", color = TextGray, fontSize = 10.sp)
                 }
             }
 
             Spacer(modifier = Modifier.height(12.dp))
 
             // Uploaded File
-            if (attachedFile != null) {
+            if (attachedFileName != null) {
                 Surface(shape = RoundedCornerShape(8.dp), color = Color(0xFF1E2126), modifier = Modifier.fillMaxWidth()) {
                     Row(modifier = Modifier.padding(12.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -120,11 +176,11 @@ fun EmployeeApplyLeaveScreen(navController: NavController) {
                             }
                             Spacer(modifier = Modifier.width(12.dp))
                             Column {
-                                Text(attachedFile ?: "", color = TextWhite, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                                Text("1.2 MB", color = TextGray, fontSize = 10.sp)
+                                Text(attachedFileName ?: "", color = TextWhite, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                Text("Attached", color = TextGray, fontSize = 10.sp)
                             }
                         }
-                        IconButton(onClick = { attachedFile = null }, modifier = Modifier.size(24.dp)) {
+                        IconButton(onClick = { attachedUri = null; attachedFileName = null }, modifier = Modifier.size(24.dp)) {
                             Icon(Icons.Default.Close, contentDescription = "Remove", tint = TextGray)
                         }
                     }
@@ -136,17 +192,28 @@ fun EmployeeApplyLeaveScreen(navController: NavController) {
             Spacer(modifier = Modifier.height(16.dp))
             Button(
                 onClick = { 
+                    if (startDate.isEmpty() || endDate.isEmpty()) {
+                        Toast.makeText(context, "Please enter start and end dates", Toast.LENGTH_SHORT).show()
+                        return@Button
+                    }
+                    
+                    if (metrics.balance <= 0) {
+                        Toast.makeText(context, "Leave request limit reached (${metrics.total} total allowed)", Toast.LENGTH_LONG).show()
+                        return@Button
+                    }
+
                     val newLeave = com.DASS_2024111023_2024117009.ims.Leave(
                         id = "L${System.currentTimeMillis()}",
                         empId = com.DASS_2024111023_2024117009.ims.MockDatabase.currentUser?.id ?: "unknown",
                         type = leaveType, 
-                        start = if (startDate.isEmpty()) "Pending" else startDate, 
-                        end = if (endDate.isEmpty()) "Pending" else endDate,
+                        start = startDate, 
+                        end = endDate,
                         reason = reason,
-                        attachment = attachedFile
+                        attachment = attachedUri?.toString(),
+                        attachmentName = attachedFileName
                     )
                     com.DASS_2024111023_2024117009.ims.MockDatabase.addLeave(newLeave)
-                    navController.popBackStack() // Auto-returns to history, which will live-update!
+                    navController.popBackStack()
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = TealAccent), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().height(50.dp)
             ) {
@@ -162,4 +229,25 @@ fun EmployeeApplyLeaveScreen(navController: NavController) {
             Spacer(modifier = Modifier.height(32.dp))
         }
     }
+}
+
+private fun getFileName(context: Context, uri: Uri): String? {
+    var result: String? = null
+    if (uri.scheme == "content") {
+        val cursor = context.contentResolver.query(uri, null, null, null, null)
+        cursor?.use {
+            if (it.moveToFirst()) {
+                val index = it.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                if (index != -1) result = it.getString(index)
+            }
+        }
+    }
+    if (result == null) {
+        result = uri.path
+        val cut = result?.lastIndexOf('/') ?: -1
+        if (cut != -1) {
+            result = result?.substring(cut + 1)
+        }
+    }
+    return result
 }

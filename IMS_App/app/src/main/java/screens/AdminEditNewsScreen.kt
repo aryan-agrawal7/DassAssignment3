@@ -37,29 +37,31 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.DASS_2024111023_2024117009.ims.ui.theme.*
 import com.DASS_2024111023_2024117009.ims.MockDatabase
-import com.DASS_2024111023_2024117009.ims.News
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AdminCreateNewsScreen(navController: NavController) {
+fun AdminEditNewsScreen(navController: NavController, newsId: String) {
     val context = LocalContext.current
+    val allNews by MockDatabase.allNews.collectAsState()
+    val existingNews = remember(newsId) { allNews.find { it.id == newsId } }
 
-    var title by remember { mutableStateOf("") }
-    var category by remember { mutableStateOf("") }
-    var content by remember { mutableStateOf(TextFieldValue("")) }
-    var imageUri by remember { mutableStateOf<String?>(null) }
+    if (existingNews == null) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text("News item not found", color = TextWhite)
+        }
+        return
+    }
 
-    // Real image picker — opens device gallery
+    var title by remember { mutableStateOf(existingNews.title) }
+    var content by remember { mutableStateOf(TextFieldValue(existingNews.content)) }
+    var imageUri by remember { mutableStateOf<String?>(existingNews.imageUri) }
+
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         imageUri = uri?.toString()
     }
 
-    // RTF helper: wraps selected text (or inserts placeholder) with the given markers
     fun wrapSelection(prefix: String, suffix: String) {
         val sel = content.selection
         val text = content.text
@@ -87,7 +89,7 @@ fun AdminCreateNewsScreen(navController: NavController) {
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = { navController.popBackStack() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = TealAccent) }
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Create News", color = TextWhite, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Text("Edit News", color = TextWhite, fontSize = 18.sp, fontWeight = FontWeight.Bold)
             }
         }
         item {
@@ -101,24 +103,10 @@ fun AdminCreateNewsScreen(navController: NavController) {
             )
         }
         item {
-            Text("Category", color = TextWhite, fontSize = 12.sp)
-            Spacer(modifier = Modifier.height(8.dp))
-            TextField(
-                value = category, onValueChange = { category = it },
-                placeholder = { Text("Enter Category (e.g. Alerts, Academics, Events)", color = Color.Gray) },
-                colors = TextFieldDefaults.colors(focusedContainerColor = InputFieldDark, unfocusedContainerColor = InputFieldDark, focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent, focusedTextColor = TextWhite),
-                shape = RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth()
-            )
-        }
-        item {
-            // RTF Content editor with functional toolbar
             Text("Content", color = TextWhite, fontSize = 12.sp)
-            Spacer(modifier = Modifier.height(4.dp))
-            Text("Tip: Use toolbar below to format — B = **bold**, I = *italic*, U = __underline__", color = TextGray, fontSize = 9.sp)
             Spacer(modifier = Modifier.height(8.dp))
             Surface(shape = RoundedCornerShape(8.dp), color = InputFieldDark, modifier = Modifier.fillMaxWidth()) {
                 Column {
-                    // RTF Toolbar — buttons are functional
                     Row(modifier = Modifier.fillMaxWidth().background(Color(0xFF2D333B)).padding(horizontal = 12.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
                         IconButton(onClick = { wrapSelection("**", "**") }, modifier = Modifier.size(24.dp)) {
                             Icon(Icons.Default.FormatBold, contentDescription = "Bold", tint = TextWhite, modifier = Modifier.size(16.dp))
@@ -129,10 +117,6 @@ fun AdminCreateNewsScreen(navController: NavController) {
                         IconButton(onClick = { wrapSelection("__", "__") }, modifier = Modifier.size(24.dp)) {
                             Icon(Icons.Default.FormatUnderlined, contentDescription = "Underline", tint = TextWhite, modifier = Modifier.size(16.dp))
                         }
-                        // Stub icons (decorative)
-                        Icon(Icons.AutoMirrored.Filled.FormatListBulleted, contentDescription = null, tint = TextGray, modifier = Modifier.size(16.dp))
-                        Icon(Icons.Default.FormatListNumbered, contentDescription = null, tint = TextGray, modifier = Modifier.size(16.dp))
-                        Icon(Icons.Default.Link, contentDescription = null, tint = TextGray, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.weight(1f))
                         IconButton(onClick = { content = TextFieldValue("") }, modifier = Modifier.size(24.dp)) {
                             Icon(Icons.Default.FormatClear, contentDescription = "Clear", tint = TextGray, modifier = Modifier.size(16.dp))
@@ -151,7 +135,6 @@ fun AdminCreateNewsScreen(navController: NavController) {
             Text("Featured Image", color = TextWhite, fontSize = 12.sp)
             Spacer(modifier = Modifier.height(8.dp))
             if (imageUri == null) {
-                // Upload box — tapping opens real device gallery
                 Box(
                     modifier = Modifier.fillMaxWidth().height(140.dp).drawBehind {
                         drawRoundRect(
@@ -167,13 +150,10 @@ fun AdminCreateNewsScreen(navController: NavController) {
                             Icon(Icons.Default.Upload, contentDescription = null, tint = TextWhite, modifier = Modifier.padding(10.dp))
                         }
                         Spacer(modifier = Modifier.height(12.dp))
-                        Text("Tap to upload image", color = TextWhite, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text("PNG, JPG or GIF (max. 5MB)", color = TextGray, fontSize = 10.sp)
+                        Text("Tap to change image", color = TextWhite, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             } else {
-                // Actual uploaded image preview
                 Box(modifier = Modifier.fillMaxWidth().height(180.dp)) {
                     val bitmap = remember(imageUri) {
                         runCatching {
@@ -188,20 +168,9 @@ fun AdminCreateNewsScreen(navController: NavController) {
                             bitmap = bitmap,
                             contentDescription = "Selected Image",
                             contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(8.dp))
+                            modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(8.dp)).clickable { imagePickerLauncher.launch("image/*") }
                         )
-                    } else {
-                        Surface(shape = RoundedCornerShape(8.dp), color = InputFieldDark, modifier = Modifier.fillMaxSize()) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Icon(Icons.Default.Image, contentDescription = null, tint = TealAccent, modifier = Modifier.size(36.dp))
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text("Image selected", color = TealAccent, fontSize = 11.sp)
-                                }
-                            }
-                        }
                     }
-                    // Delete / remove image button at top-right
                     IconButton(
                         onClick = { imageUri = null },
                         modifier = Modifier.align(Alignment.TopEnd).background(Color(0x88000000), CircleShape)
@@ -215,24 +184,15 @@ fun AdminCreateNewsScreen(navController: NavController) {
             Spacer(modifier = Modifier.height(8.dp))
             Button(
                 onClick = {
-                    if (title.isNotBlank() && content.text.isNotBlank() && category.isNotBlank()) {
-                        val newNews = News(
-                            id = java.util.UUID.randomUUID().toString(),
-                            title = title,
-                            content = content.text,
-                            author = "Admin",
-                            time = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date()),
-                            likes = 0,
-                            imageUri = imageUri
-                        )
-                        MockDatabase.addNews(newNews)
+                    if (title.isNotBlank() && content.text.isNotBlank()) {
+                        MockDatabase.updateNews(newsId, title, content.text, imageUri)
                         navController.popBackStack()
                     }
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = TealAccent),
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier.fillMaxWidth().height(50.dp)
-            ) { Text("Publish", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 16.sp) }
+            ) { Text("Save Changes", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 16.sp) }
             Spacer(modifier = Modifier.height(32.dp))
         }
     }

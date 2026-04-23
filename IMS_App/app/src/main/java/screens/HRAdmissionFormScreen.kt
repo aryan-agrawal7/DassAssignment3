@@ -13,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -24,13 +25,14 @@ import com.DASS_2024111023_2024117009.ims.User
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HRAdmissionFormScreen(navController: NavController) {
+    val context = LocalContext.current
     val template by MockDatabase.admissionTemplate.collectAsState()
     
     // State to store form responses (FieldName -> Value)
     var formResponses by remember { mutableStateOf(mapOf<String, String>()) }
     var generatedEmpId by remember { mutableStateOf(nextEmployeeId(MockDatabase.users.value)) }
     var createdEmpId by remember { mutableStateOf<String?>(null) }
-    val newEmpPass = remember { "pass123" }
+    val newEmpPass = remember { "123" }
     var submitSuccess by remember { mutableStateOf(false) }
 
     LazyColumn(modifier = Modifier.fillMaxSize().background(BackgroundDark).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -50,11 +52,17 @@ fun HRAdmissionFormScreen(navController: NavController) {
                 Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF065F46)), modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(20.dp)) {
                         Text("EMPLOYEE CREATED SUCCESSFULLY", color = TextWhite, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text("Login ID: ${createdEmpId ?: generatedEmpId}", color = TealAccent, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(12.dp))
+                        
+                        val email = template.find { it.label.contains("Email", true) }?.let { formResponses[it.id] } ?: "Not provided"
+                        val name = template.find { it.label.contains("Name", true) }?.let { formResponses[it.id] } ?: "New Employee"
+                        
+                        Text("Name: $name", color = TextWhite, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                         Spacer(modifier = Modifier.height(4.dp))
-                        Text("Password: $newEmpPass", color = TealAccent, fontSize = 14.sp)
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Text("Email: $email", color = TealAccent, fontSize = 16.sp)
+                        Text("Password: $newEmpPass", color = TealAccent, fontSize = 16.sp)
+                        
+                        Spacer(modifier = Modifier.height(20.dp))
                         Button(
                             onClick = { navController.popBackStack() },
                             colors = ButtonDefaults.buttonColors(containerColor = TealAccent),
@@ -114,11 +122,21 @@ fun HRAdmissionFormScreen(navController: NavController) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Button(
                     onClick = {
+                        val missingFields = template.filter { it.isRequired && (formResponses[it.id]?.isEmpty() ?: true) }
+                        if (missingFields.isNotEmpty()) {
+                            android.widget.Toast.makeText(context, "Please fill required fields: ${missingFields.joinToString { it.label }}", android.widget.Toast.LENGTH_SHORT).show()
+                            return@Button
+                        }
+
                         val fullNameField = template.find { it.label.contains("Name", ignoreCase = true) }
                         val deptField = template.find { it.label.contains("Department", ignoreCase = true) }
                         
                         val nameStr = if (fullNameField != null) formResponses[fullNameField.id] ?: "New Employee" else "New Employee"
                         val deptStr = if (deptField != null) formResponses[deptField.id] ?: "General" else "General"
+                        
+                        // Map all responses to customData using labels as keys
+                        val customDataMap = template.associate { it.label to (formResponses[it.id] ?: "") }
+                        
                         val finalEmpId = ensureUniqueEmployeeId(generatedEmpId, MockDatabase.users.value)
                         
                         val newUser = User(
@@ -126,7 +144,8 @@ fun HRAdmissionFormScreen(navController: NavController) {
                             pass = newEmpPass,
                             role = "Employee",
                             name = nameStr,
-                            department = deptStr
+                            department = deptStr,
+                            customData = customDataMap
                         )
                         MockDatabase.addUser(newUser)
                         createdEmpId = finalEmpId

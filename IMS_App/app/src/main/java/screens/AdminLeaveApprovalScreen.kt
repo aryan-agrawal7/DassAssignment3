@@ -7,12 +7,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.EventNote // FIXED IMPORT
+import androidx.compose.material.icons.automirrored.filled.EventNote
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.FlightTakeoff
 import androidx.compose.material.icons.filled.LocalHospital
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -31,11 +32,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.foundation.clickable
+import android.content.Intent
+import android.net.Uri
+import androidx.core.net.toUri
+import androidx.compose.ui.platform.LocalContext
 
 @Composable
 fun AdminLeaveApprovalScreen(navController: NavController) {
     val leaves by MockDatabase.leaves.collectAsState()
     val users by MockDatabase.users.collectAsState()
+    val context = LocalContext.current
     var filterStatus by remember { mutableStateOf("Pending") }
 
     val filteredLeaves = leaves.filter { it.hrStatus == "Approved" && it.adminStatus == filterStatus }
@@ -50,32 +56,21 @@ fun AdminLeaveApprovalScreen(navController: NavController) {
         }
         item {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = if (filterStatus == "Pending") TealAccent else InputFieldDark,
-                    modifier = Modifier.clickable { filterStatus = "Pending" }
-                ) {
-                    Text("Pending", color = if (filterStatus == "Pending") Color.Black else TextWhite, fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
-                }
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = if (filterStatus == "Approved") TealAccent else InputFieldDark,
-                    modifier = Modifier.clickable { filterStatus = "Approved" }
-                ) {
-                    Text("Approved", color = if (filterStatus == "Approved") Color.Black else TextWhite, fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
-                }
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = if (filterStatus == "Rejected") TealAccent else InputFieldDark,
-                    modifier = Modifier.clickable { filterStatus = "Rejected" }
-                ) {
-                    Text("Rejected", color = if (filterStatus == "Rejected") Color.Black else TextWhite, fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+                listOf("Pending", "Approved", "Rejected").forEach { status ->
+                    Surface(
+                        shape = RoundedCornerShape(20.dp),
+                        color = if (filterStatus == status) TealAccent else InputFieldDark,
+                        modifier = Modifier.clickable { filterStatus = status }
+                    ) {
+                        Text(status, color = if (filterStatus == status) Color.Black else TextWhite, fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+                    }
                 }
             }
         }
         
         filteredLeaves.forEach { leave ->
             val emp = users.find { it.id == leave.empId }
+            val empMetrics = MockDatabase.getLeaveMetrics(leave.empId)
             item {
                 AdminLeaveCardStub(
                     initials = emp?.name?.take(2)?.uppercase() ?: "??", 
@@ -85,7 +80,21 @@ fun AdminLeaveApprovalScreen(navController: NavController) {
                     leaveIcon = Icons.Default.LocalHospital,
                     duration = "${leave.start} - ${leave.end}",
                     note = leave.reason,
-                    usedLeaves = 4, totalLeaves = 12, attachment = leave.attachment, avatarColor = Color(0xFF1E3A8A),
+                    usedRequests = empMetrics.approved, 
+                    totalRequests = empMetrics.total, 
+                    attachmentName = leave.attachmentName,
+                    onOpenAttachment = {
+                        try {
+                            val intent = Intent(Intent.ACTION_VIEW).apply {
+                                data = leave.attachment?.toUri()
+                                flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+                            }
+                            context.startActivity(intent)
+                        } catch (e: Exception) {
+                            android.widget.Toast.makeText(context, "Cannot open file: ${e.localizedMessage}", android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    avatarColor = Color(0xFF1E3A8A),
                     showActions = filterStatus == "Pending",
                     onApprove = { MockDatabase.updateLeaveStatusAdmin(leave.id, "Approved") },
                     onReject = { MockDatabase.updateLeaveStatusAdmin(leave.id, "Rejected") }
@@ -98,7 +107,8 @@ fun AdminLeaveApprovalScreen(navController: NavController) {
 @Composable
 fun AdminLeaveCardStub(
     initials: String, name: String, role: String, leaveType: String, leaveIcon: ImageVector,
-    duration: String, note: String, usedLeaves: Int, totalLeaves: Int, attachment: String?, avatarColor: Color,
+    duration: String, note: String, usedRequests: Int, totalRequests: Int, 
+    attachmentName: String? = null, onOpenAttachment: () -> Unit = {}, avatarColor: Color,
     showActions: Boolean = true, onApprove: () -> Unit = {}, onReject: () -> Unit = {}
 ) {
     Card(colors = CardDefaults.cardColors(containerColor = CardDark), modifier = Modifier.fillMaxWidth()) {
@@ -136,7 +146,7 @@ fun AdminLeaveCardStub(
             }
             Spacer(modifier = Modifier.height(4.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.AutoMirrored.Filled.EventNote, contentDescription = null, tint = TextGray, modifier = Modifier.size(14.dp)) // FIXED ICON
+                Icon(Icons.AutoMirrored.Filled.EventNote, contentDescription = null, tint = TextGray, modifier = Modifier.size(14.dp))
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(duration, color = TextGray, fontSize = 12.sp)
             }
@@ -144,26 +154,29 @@ fun AdminLeaveCardStub(
             Text(note, color = TextGray, fontSize = 12.sp, lineHeight = 18.sp)
             Spacer(modifier = Modifier.height(16.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("Past Leaves", color = TextGray, fontSize = 10.sp)
-                Text("$usedLeaves/$totalLeaves used", color = TealAccent, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                Text("Past Requests", color = TextGray, fontSize = 10.sp)
+                Text("$usedRequests/$totalRequests used", color = TealAccent, fontSize = 10.sp, fontWeight = FontWeight.Bold)
             }
             Spacer(modifier = Modifier.height(4.dp))
 
-            // FIXED WARNING: Uses the lambda overload for progress
             LinearProgressIndicator(
-                progress = { usedLeaves.toFloat() / totalLeaves.toFloat() },
-                color = if (usedLeaves > totalLeaves / 2) Color(0xFFFDBA74) else TealAccent,
+                progress = { if (totalRequests > 0) usedRequests.toFloat() / totalRequests.toFloat() else 0f },
+                color = if (usedRequests > totalRequests / 2) Color(0xFFFDBA74) else TealAccent,
                 trackColor = BackgroundDark,
                 modifier = Modifier.fillMaxWidth().height(4.dp)
             )
 
-            if (attachment != null) {
+            if (attachmentName != null) {
                 Spacer(modifier = Modifier.height(12.dp))
-                Surface(shape = RoundedCornerShape(8.dp), color = Color(0xFF1E2126), modifier = Modifier.fillMaxWidth()) {
+                Surface(
+                    shape = RoundedCornerShape(8.dp), 
+                    color = Color(0xFF1E2126), 
+                    modifier = Modifier.fillMaxWidth().clickable(onClick = onOpenAttachment)
+                ) {
                     Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.Description, contentDescription = null, tint = TealAccent, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(attachment, color = TextGray, fontSize = 12.sp)
+                        Text(attachmentName, color = TealAccent, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }

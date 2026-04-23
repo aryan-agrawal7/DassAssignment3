@@ -27,11 +27,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.foundation.clickable
+import android.content.Intent
+import android.net.Uri
+import androidx.core.net.toUri
+import androidx.compose.ui.platform.LocalContext
 
 @Composable
 fun HRLeavesScreen(navController: NavController) {
     val leaves by MockDatabase.leaves.collectAsState()
     val users by MockDatabase.users.collectAsState()
+    val context = LocalContext.current
     var filterStatus by remember { mutableStateOf("Pending") }
 
     val filteredLeaves = leaves.filter { it.hrStatus == filterStatus }
@@ -43,26 +48,14 @@ fun HRLeavesScreen(navController: NavController) {
 
         item {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = if (filterStatus == "Pending") TealAccent else InputFieldDark,
-                    modifier = Modifier.clickable { filterStatus = "Pending" }
-                ) {
-                    Text("Pending", color = if (filterStatus == "Pending") Color.Black else TextWhite, fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
-                }
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = if (filterStatus == "Approved") TealAccent else InputFieldDark,
-                    modifier = Modifier.clickable { filterStatus = "Approved" }
-                ) {
-                    Text("Approved", color = if (filterStatus == "Approved") Color.Black else TextWhite, fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
-                }
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = if (filterStatus == "Rejected") TealAccent else InputFieldDark,
-                    modifier = Modifier.clickable { filterStatus = "Rejected" }
-                ) {
-                    Text("Rejected", color = if (filterStatus == "Rejected") Color.Black else TextWhite, fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+                listOf("Pending", "Approved", "Rejected").forEach { status ->
+                    Surface(
+                        shape = RoundedCornerShape(20.dp),
+                        color = if (filterStatus == status) TealAccent else InputFieldDark,
+                        modifier = Modifier.clickable { filterStatus = status }
+                    ) {
+                        Text(status, color = if (filterStatus == status) Color.Black else TextWhite, fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+                    }
                 }
             }
         }
@@ -80,6 +73,18 @@ fun HRLeavesScreen(navController: NavController) {
                     hasWarning = false,
                     note = leave.reason,
                     hasAttachment = leave.attachment != null,
+                    attachmentName = leave.attachmentName,
+                    onOpenAttachment = {
+                        try {
+                            val intent = Intent(Intent.ACTION_VIEW).apply {
+                                data = leave.attachment?.toUri()
+                                flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+                            }
+                            context.startActivity(intent)
+                        } catch (e: Exception) {
+                            android.widget.Toast.makeText(context, "Cannot open file: ${e.localizedMessage}", android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                    },
                     showActions = leave.hrStatus == "Pending",
                     onApprove = { MockDatabase.updateLeaveStatusHR(leave.id, "Approved") },
                     onReject = { MockDatabase.updateLeaveStatusHR(leave.id, "Rejected") }
@@ -92,7 +97,8 @@ fun HRLeavesScreen(navController: NavController) {
 @Composable
 fun LeaveCardStub(
     initials: String, name: String, role: String, leaveType: String, duration: String, history: String,
-    hasWarning: Boolean, note: String, hasAttachment: Boolean,
+    hasWarning: Boolean, note: String, hasAttachment: Boolean, attachmentName: String? = null,
+    onOpenAttachment: () -> Unit = {},
     showActions: Boolean = true, onApprove: () -> Unit = {}, onReject: () -> Unit = {}
 ) {
     Card(colors = CardDefaults.cardColors(containerColor = CardDark), modifier = Modifier.fillMaxWidth()) {
@@ -130,11 +136,15 @@ fun LeaveCardStub(
 
             if (hasAttachment) {
                 Spacer(modifier = Modifier.height(12.dp))
-                Surface(shape = RoundedCornerShape(8.dp), color = BackgroundDark) {
-                    Row(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Description, contentDescription = null, tint = TealAccent, modifier = Modifier.size(14.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("medical_cert.pdf", color = TextWhite, fontSize = 12.sp)
+                Surface(
+                    shape = RoundedCornerShape(8.dp), 
+                    color = BackgroundDark,
+                    modifier = Modifier.clickable(onClick = onOpenAttachment)
+                ) {
+                    Row(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Description, contentDescription = null, tint = TealAccent, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(attachmentName ?: "View Attachment", color = TealAccent, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }

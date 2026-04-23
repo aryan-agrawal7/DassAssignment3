@@ -22,8 +22,6 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             IMSTheme {
-//                LoginScreen()
-//                StudentMainScreen()
                 RootNavigation()
             }
         }

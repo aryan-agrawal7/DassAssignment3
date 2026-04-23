@@ -41,9 +41,18 @@ fun EmployeeProfileScreen(onLogout: () -> Unit) {
             Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.Person, contentDescription = "Avatar", tint = TealAccent, modifier = Modifier.size(60.dp)) }
         }
 
+        val user = com.DASS_2024111023_2024117009.ims.MockDatabase.currentUser
+        val customData = user?.customData ?: emptyMap()
+        
+        val emailKey = customData.keys.find { it.contains("Email", ignoreCase = true) }
+        val phoneKey = customData.keys.find { it.contains("Phone", ignoreCase = true) }
+        
+        val email = if (emailKey != null && customData[emailKey]!!.isNotEmpty()) customData[emailKey]!! else "Not provided"
+        val phone = if (phoneKey != null && customData[phoneKey]!!.isNotEmpty()) customData[phoneKey]!! else "Not provided"
+
         Spacer(modifier = Modifier.height(24.dp))
-        Text(com.DASS_2024111023_2024117009.ims.MockDatabase.currentUser?.name ?: "Employee Name", color = TextWhite, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-        Text("Employee in XYZ Department", color = TextGray, fontSize = 14.sp)
+        Text(user?.name ?: "Employee Name", color = TextWhite, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        Text("Employee in ${user?.department ?: "General"}", color = TextGray, fontSize = 14.sp)
 
         Spacer(modifier = Modifier.height(32.dp))
 
@@ -54,13 +63,34 @@ fun EmployeeProfileScreen(onLogout: () -> Unit) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.Email, contentDescription = null, tint = TealAccent)
                     Spacer(modifier = Modifier.width(16.dp))
-                    Column { Text("EMAIL ADDRESS", color = TextGray, fontSize = 10.sp); Text("alex.admin@ims.edu", color = TextWhite, fontSize = 14.sp) }
+                    Column { Text("EMAIL ADDRESS", color = TextGray, fontSize = 10.sp); Text(email, color = TextWhite, fontSize = 14.sp) }
                 }
                 Spacer(modifier = Modifier.height(16.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.Phone, contentDescription = null, tint = TealAccent)
                     Spacer(modifier = Modifier.width(16.dp))
-                    Column { Text("PHONE NUMBER", color = TextGray, fontSize = 10.sp); Text("+1 234 567 890", color = TextWhite, fontSize = 14.sp) }
+                    Column { Text("PHONE NUMBER", color = TextGray, fontSize = 10.sp); Text(phone, color = TextWhite, fontSize = 14.sp) }
+                }
+                
+                // DYNAMIC EXTRA FIELDS
+                val otherFields = customData.filterKeys { 
+                    it != emailKey && it != phoneKey && 
+                    !it.contains("Name", ignoreCase = true) && 
+                    !it.contains("Department", ignoreCase = true) 
+                }
+                
+                if (otherFields.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    HorizontalDivider(color = Color.DarkGray, thickness = 0.5.dp)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("Additional Information", color = TealAccent, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    otherFields.forEach { (label, value) ->
+                        Column(modifier = Modifier.padding(bottom = 12.dp)) {
+                            Text(label.uppercase(), color = TextGray, fontSize = 10.sp)
+                            Text(value.ifEmpty { "Not provided" }, color = TextWhite, fontSize = 14.sp)
+                        }
+                    }
                 }
             }
         }

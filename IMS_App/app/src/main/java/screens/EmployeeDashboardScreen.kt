@@ -9,7 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.EventNote
 import androidx.compose.material.icons.automirrored.filled.Message
-import androidx.compose.material.icons.automirrored.filled.ReceiptLong // FIXED IMPORT
+import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -25,17 +25,13 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.DASS_2024111023_2024117009.ims.ui.theme.*
 import com.DASS_2024111023_2024117009.ims.MockDatabase
-import java.text.SimpleDateFormat
-import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EmployeeDashboardScreen(navController: NavController) {
     val myLeaves = MockDatabase.leaves.collectAsState().value.filter { it.empId == MockDatabase.currentUser?.id }
-    val annualLeaveQuota = 21
-    val approvedDays = myLeaves.filter { it.overallStatus == "Approved" }.sumOf { leaveDurationDays(it.start, it.end) }
-    val remainingLeaves = (annualLeaveQuota - approvedDays).coerceAtLeast(0)
-    val latestLeave = latestLeaveForEmployee(myLeaves)
+    val metrics = MockDatabase.getLeaveMetrics(MockDatabase.currentUser?.id ?: "")
+    val latestLeave = myLeaves.lastOrNull()
     
     fun navigateToTab(route: String) {
         navController.navigate(route) {
@@ -64,7 +60,7 @@ fun EmployeeDashboardScreen(navController: NavController) {
                 value = "", 
                 onValueChange = {}, 
                 placeholder = { Text("Search news, records...", color = TextGray) },
-                enabled = false, // Disable typing to act as a button
+                enabled = false, 
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = TextGray) },
                 colors = TextFieldDefaults.colors(
                     disabledContainerColor = CardDark,
@@ -96,10 +92,9 @@ fun EmployeeDashboardScreen(navController: NavController) {
             Card(colors = CardDefaults.cardColors(containerColor = CardDark), modifier = Modifier.fillMaxWidth()) {
                 Row(modifier = Modifier.padding(24.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Column {
-                        Text("$remainingLeaves", color = TextWhite, fontSize = 48.sp, fontWeight = FontWeight.ExtraBold)
+                        Text("${metrics.balance}", color = TextWhite, fontSize = 48.sp, fontWeight = FontWeight.ExtraBold)
                         Text("LEAVES REMAINING", color = TextGray, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                     }
-                    // ... icon
                 }
             }
         }
@@ -134,7 +129,6 @@ fun EmployeeDashboardScreen(navController: NavController) {
             Text("Quick Access", color = TextWhite, fontSize = 16.sp, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(12.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                // FIXED WARNING HERE:
                 QuickAccessCard("Payslips", "View history", Icons.AutoMirrored.Filled.ReceiptLong, TealAccent, Modifier.weight(1f)) { navigateToTab("emp_payroll") }
                 QuickAccessCard("Leaves", "Apply & track", Icons.AutoMirrored.Filled.EventNote, Color(0xFF60A5FA), Modifier.weight(1f)) { navigateToTab("emp_leaves") }
             }
@@ -160,27 +154,6 @@ fun EmployeeDashboardScreen(navController: NavController) {
             }
         }
     }
-}
-
-private fun latestLeaveForEmployee(leaves: List<com.DASS_2024111023_2024117009.ims.Leave>): com.DASS_2024111023_2024117009.ims.Leave? {
-    val latestByAppliedDate = leaves
-        .mapNotNull { leave -> parseDashboardDate(leave.appliedDate)?.let { it to leave } }
-        .maxByOrNull { it.first }
-        ?.second
-    return latestByAppliedDate ?: leaves.lastOrNull()
-}
-
-private fun leaveDurationDays(start: String, end: String): Int {
-    val startMillis = parseDashboardDate(start)
-    val endMillis = parseDashboardDate(end)
-    if (startMillis == null || endMillis == null || endMillis < startMillis) return 1
-    val oneDayMs = 24 * 60 * 60 * 1000L
-    return (((endMillis - startMillis) / oneDayMs) + 1).toInt()
-}
-
-private fun parseDashboardDate(value: String): Long? {
-    val formatter = SimpleDateFormat("MMM dd, yyyy", Locale.ENGLISH)
-    return runCatching { formatter.parse(value)?.time }.getOrNull()
 }
 
 @Composable

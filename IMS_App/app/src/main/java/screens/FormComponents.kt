@@ -1,4 +1,4 @@
-﻿package com.DASS_2024111023_2024117009.ims.screens
+package com.DASS_2024111023_2024117009.ims.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -49,7 +49,7 @@ fun BuilderFieldCard(
                         value = field.type, onValueChange = {}, label = { Text("Field Type", color = TextGray) }, readOnly = true,
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                         colors = TextFieldDefaults.colors(focusedContainerColor = InputFieldDark, unfocusedContainerColor = InputFieldDark, focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent, focusedTextColor = TextWhite),
-                        shape = RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth()
+                        shape = RoundedCornerShape(8.dp), modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable, true).fillMaxWidth()
                     )
                     ExposedDropdownMenu(
                         expanded = expanded,
@@ -121,7 +121,7 @@ fun BuilderDropdownCard(
                         value = field.type, onValueChange = {}, label = { Text("Field Type", color = TextGray) }, readOnly = true,
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                         colors = TextFieldDefaults.colors(focusedContainerColor = InputFieldDark, unfocusedContainerColor = InputFieldDark, focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent, focusedTextColor = TextWhite),
-                        shape = RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth()
+                        shape = RoundedCornerShape(8.dp), modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable, true).fillMaxWidth()
                     )
                     ExposedDropdownMenu(
                         expanded = expanded,
@@ -244,7 +244,7 @@ fun DynamicFormDropdown(label: String, options: List<String>, selectedValue: Str
                 value = selectedValue.ifEmpty { "Select Option" }, onValueChange = {}, readOnly = true,
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                 colors = TextFieldDefaults.colors(focusedContainerColor = InputFieldDark, unfocusedContainerColor = InputFieldDark, focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent, focusedTextColor = TextWhite, unfocusedTextColor = TextWhite),
-                shape = RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth().height(50.dp)
+                shape = RoundedCornerShape(8.dp), modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable, true).fillMaxWidth().height(50.dp)
             )
             ExposedDropdownMenu(
                 expanded = expanded,

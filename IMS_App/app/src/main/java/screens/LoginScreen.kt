@@ -73,7 +73,9 @@ fun LoginScreen(navController: NavController) {
                     onClick = {
                         // LIVE DB CHECK
                         val user = MockDatabase.users.value.find {
-                            it.id.equals(identifier, ignoreCase = true) && it.pass == password && it.role == selectedRole
+                            val matchesId = it.id.equals(identifier, ignoreCase = true)
+                            val matchesEmail = it.customData["Email Address"]?.equals(identifier, ignoreCase = true) == true
+                            (matchesId || matchesEmail) && it.pass == password && it.role == selectedRole
                         }
 
                         if (user != null) {

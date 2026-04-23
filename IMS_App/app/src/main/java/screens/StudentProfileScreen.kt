@@ -38,9 +38,13 @@ fun StudentProfileScreen(onLogout: () -> Unit) {
             Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.Person, contentDescription = "Avatar", tint = TealAccent, modifier = Modifier.size(60.dp)) }
         }
 
+        val user = com.DASS_2024111023_2024117009.ims.MockDatabase.currentUser
+        val customData = user?.customData ?: emptyMap()
+        val email = customData.entries.find { it.key.contains("Email", true) }?.value ?: "Not provided"
+        val phone = customData.entries.find { it.key.contains("Phone", true) }?.value ?: "Not provided"
+
         Spacer(modifier = Modifier.height(16.dp))
-        Text(com.DASS_2024111023_2024117009.ims.MockDatabase.currentUser?.name ?: "Student Name", color = TextWhite, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-        // FIXED: Removed blue badge, replaced with clean gray text
+        Text(user?.name ?: "Student Name", color = TextWhite, fontSize = 24.sp, fontWeight = FontWeight.Bold)
         Text("Student", color = TextGray, fontSize = 14.sp)
 
         Spacer(modifier = Modifier.height(32.dp))
@@ -52,20 +56,20 @@ fun StudentProfileScreen(onLogout: () -> Unit) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.Email, contentDescription = null, tint = TealAccent)
                     Spacer(modifier = Modifier.width(16.dp))
-                    Column { Text("EMAIL ADDRESS", color = TextGray, fontSize = 10.sp); Text("yash.tripathi@students.college", color = TextWhite, fontSize = 14.sp) }
+                    Column { Text("EMAIL ADDRESS", color = TextGray, fontSize = 10.sp); Text(email, color = TextWhite, fontSize = 14.sp) }
                 }
                 Spacer(modifier = Modifier.height(16.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.Phone, contentDescription = null, tint = TealAccent)
                     Spacer(modifier = Modifier.width(16.dp))
-                    Column { Text("PHONE NUMBER", color = TextGray, fontSize = 10.sp); Text("+1 234 567 890", color = TextWhite, fontSize = 14.sp) }
+                    Column { Text("PHONE NUMBER", color = TextGray, fontSize = 10.sp); Text(phone, color = TextWhite, fontSize = 14.sp) }
                 }
                 Spacer(modifier = Modifier.height(24.dp))
-                Text("Batch", color = TextGray, fontSize = 12.sp)
-                Text("UG 2024", color = TealAccent, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Text("Course / Batch", color = TextGray, fontSize = 12.sp)
+                Text(user?.department ?: "UG 2024", color = TealAccent, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("Roll Number", color = TextGray, fontSize = 12.sp)
-                Text("2024111003", color = TealAccent, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Text("ID / Roll Number", color = TextGray, fontSize = 12.sp)
+                Text(user?.id ?: "2024111003", color = TealAccent, fontSize = 20.sp, fontWeight = FontWeight.Bold)
             }
         }
 

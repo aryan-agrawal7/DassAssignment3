@@ -39,7 +39,7 @@ fun EmployeeMainScreen(onLogout: () -> Unit = {}) {
             composable("settings") { GeneralSettingsScreen(navController) }
             composable("messages") { MessagesScreen(navController) }
             composable("global_search") { GlobalSearchScreen(navController) }
-            composable("emp_exit") { EmployeeExitScreen(navController) }
+            composable("emp_exit") { EmployeeExitScreen(navController, onLogout) }
             composable("emp_fill_payslip") { EmployeeFillPayslipScreen(navController) }
             composable("emp_apply_leave") { EmployeeApplyLeaveScreen(navController) }
             composable("news_list") { InstituteNewsScreen(navController, isAdmin = false) }

@@ -9,6 +9,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -20,10 +21,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.DASS_2024111023_2024117009.ims.ui.theme.*
+import com.DASS_2024111023_2024117009.ims.MockDatabase
 
 @Composable
 fun EmployeeLeavesScreen(navController: NavController) {
-    val myLeaves = com.DASS_2024111023_2024117009.ims.MockDatabase.leaves.collectAsState().value.filter { it.empId == com.DASS_2024111023_2024117009.ims.MockDatabase.currentUser?.id }.reversed()
+    val myLeaves = MockDatabase.leaves.collectAsState().value.filter { it.empId == MockDatabase.currentUser?.id }.reversed()
+    val metrics = MockDatabase.getLeaveMetrics(MockDatabase.currentUser?.id ?: "")
 
     Scaffold(
         containerColor = BackgroundDark,
@@ -45,9 +48,9 @@ fun EmployeeLeavesScreen(navController: NavController) {
             // Stats Row
             item {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    PayrollStatCard("Total Leaves", "12", Modifier.weight(1f), TextWhite)
-                    PayrollStatCard("Balance", "4", Modifier.weight(1f), TealAccent)
-                    PayrollStatCard("Pending", "1", Modifier.weight(1f), Color(0xFFFDBA74)) // Orange
+                    PayrollStatCard("Total", "${metrics.total}", Modifier.weight(1f), TextWhite)
+                    PayrollStatCard("Balance", "${metrics.balance}", Modifier.weight(1f), TealAccent)
+                    PayrollStatCard("Pending", "${metrics.pending}", Modifier.weight(1f), Color(0xFFFDBA74))
                 }
             }
 
@@ -63,8 +66,16 @@ fun EmployeeLeavesScreen(navController: NavController) {
 
 @Composable
 fun LeaveHistoryCard(title: String, dates: String, overallStatus: String, hrStatus: String, adminStatus: String) {
-    val statusColor = if (overallStatus == "Approved") TealAccent else Color(0xFFFDBA74) // Teal or Orange
-    val statusBg = if (overallStatus == "Approved") Color(0xFF042F2E) else Color(0xFF431407)
+    val statusColor = when (overallStatus) {
+        "Approved" -> TealAccent
+        "Rejected" -> Color(0xFFFCA5A5)
+        else -> Color(0xFFFDBA74)
+    }
+    val statusBg = when (overallStatus) {
+        "Approved" -> Color(0xFF042F2E)
+        "Rejected" -> Color(0xFF3F2323)
+        else -> Color(0xFF431407)
+    }
 
     Card(colors = CardDefaults.cardColors(containerColor = CardDark), modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(20.dp)) {
@@ -87,25 +98,33 @@ fun LeaveHistoryCard(title: String, dates: String, overallStatus: String, hrStat
 
             // Dual Approval Status
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-                Column {
-                    Text("HR Status", color = TextGray, fontSize = 12.sp)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(if (hrStatus == "Approved") Icons.Default.CheckCircle else Icons.Default.Schedule, contentDescription = null, tint = statusColor, modifier = Modifier.size(14.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(hrStatus, color = statusColor, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
-                Column {
-                    Text("Admin Status", color = TextGray, fontSize = 12.sp)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(if (adminStatus == "Approved") Icons.Default.CheckCircle else Icons.Default.Schedule, contentDescription = null, tint = statusColor, modifier = Modifier.size(14.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(adminStatus, color = statusColor, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
+                StatusBadge("HR Status", hrStatus)
+                StatusBadge("Admin Status", adminStatus)
             }
+        }
+    }
+}
+
+@Composable
+fun StatusBadge(label: String, status: String) {
+    val color = when (status) {
+        "Approved" -> TealAccent
+        "Rejected" -> Color(0xFFFCA5A5)
+        else -> Color(0xFFFDBA74)
+    }
+    val icon = when (status) {
+        "Approved" -> Icons.Default.CheckCircle
+        "Rejected" -> Icons.Default.Cancel
+        else -> Icons.Default.Schedule
+    }
+    
+    Column {
+        Text(label, color = TextGray, fontSize = 12.sp)
+        Spacer(modifier = Modifier.height(4.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(14.dp))
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(status, color = color, fontSize = 12.sp, fontWeight = FontWeight.Bold)
         }
     }
 }

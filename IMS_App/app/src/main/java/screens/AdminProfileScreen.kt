@@ -40,9 +40,14 @@ fun AdminProfileScreen(onLogout: () -> Unit) {
             Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.Person, contentDescription = "Avatar", tint = TealAccent, modifier = Modifier.size(60.dp)) }
         }
 
+        val user = com.DASS_2024111023_2024117009.ims.MockDatabase.currentUser
+        val customData = user?.customData ?: emptyMap()
+        val email = customData.entries.find { it.key.contains("Email", true) }?.value ?: "Not provided"
+        val phone = customData.entries.find { it.key.contains("Phone", true) }?.value ?: "Not provided"
+
         Spacer(modifier = Modifier.height(24.dp))
-        Text(com.DASS_2024111023_2024117009.ims.MockDatabase.currentUser?.name ?: "Admin Name", color = TextWhite, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-        Text("System Administrator", color = TextGray, fontSize = 14.sp)
+        Text(user?.name ?: "Admin Name", color = TextWhite, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        Text(user?.department ?: "System Administrator", color = TextGray, fontSize = 14.sp)
 
         Spacer(modifier = Modifier.height(32.dp))
 
@@ -53,13 +58,13 @@ fun AdminProfileScreen(onLogout: () -> Unit) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.Email, contentDescription = null, tint = TealAccent)
                     Spacer(modifier = Modifier.width(16.dp))
-                    Column { Text("EMAIL ADDRESS", color = TextGray, fontSize = 10.sp); Text("alex.admin@ims.edu", color = TextWhite, fontSize = 14.sp) }
+                    Column { Text("EMAIL ADDRESS", color = TextGray, fontSize = 10.sp); Text(email, color = TextWhite, fontSize = 14.sp) }
                 }
                 Spacer(modifier = Modifier.height(16.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.Phone, contentDescription = null, tint = TealAccent)
                     Spacer(modifier = Modifier.width(16.dp))
-                    Column { Text("PHONE NUMBER", color = TextGray, fontSize = 10.sp); Text("+1 234 567 890", color = TextWhite, fontSize = 14.sp) }
+                    Column { Text("PHONE NUMBER", color = TextGray, fontSize = 10.sp); Text(phone, color = TextWhite, fontSize = 14.sp) }
                 }
                 Spacer(modifier = Modifier.height(16.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {

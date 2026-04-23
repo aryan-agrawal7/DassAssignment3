@@ -21,10 +21,25 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.DASS_2024111023_2024117009.ims.ui.theme.*
+import com.DASS_2024111023_2024117009.ims.MockDatabase
+import androidx.compose.runtime.collectAsState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HREmployeeListScreen(navController: NavController) {
+    val users by MockDatabase.users.collectAsState()
+    var searchQuery by remember { mutableStateOf("") }
+    var selectedUserIds by remember { mutableStateOf(setOf<String>()) }
+
+    val employees = users.filter { it.role == "Employee" }
+    val filteredEmployees = employees.filter { 
+        it.name.contains(searchQuery, ignoreCase = true) || 
+        it.role.contains(searchQuery, ignoreCase = true) || 
+        it.department.contains(searchQuery, ignoreCase = true)
+    }
+
+    val isAllSelected = filteredEmployees.isNotEmpty() && filteredEmployees.all { it.id in selectedUserIds }
+
     LazyColumn(modifier = Modifier.fillMaxSize().background(BackgroundDark).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item {
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -35,7 +50,9 @@ fun HREmployeeListScreen(navController: NavController) {
         }
         item {
             TextField(
-                value = "", onValueChange = {}, placeholder = { Text("Search employees...", color = TextGray) },
+                value = searchQuery, 
+                onValueChange = { searchQuery = it }, 
+                placeholder = { Text("Search employees...", color = TextGray) },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = TextGray) },
                 colors = TextFieldDefaults.colors(focusedContainerColor = CardDark, unfocusedContainerColor = CardDark, focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent),
                 shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()
@@ -44,29 +61,58 @@ fun HREmployeeListScreen(navController: NavController) {
         item {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(checked = false, onCheckedChange = {}, colors = CheckboxDefaults.colors(uncheckedColor = TextGray, checkedColor = TealAccent))
-                    Text("0 selected", color = TextWhite, fontSize = 14.sp)
+                    Checkbox(
+                        checked = isAllSelected, 
+                        onCheckedChange = { checked ->
+                            selectedUserIds = if (checked) {
+                                selectedUserIds + filteredEmployees.map { it.id }.toSet()
+                            } else {
+                                selectedUserIds - filteredEmployees.map { it.id }.toSet()
+                            }
+                        }, 
+                        colors = CheckboxDefaults.colors(uncheckedColor = TextGray, checkedColor = TealAccent)
+                    )
+                    Text("${selectedUserIds.size} selected", color = TextWhite, fontSize = 14.sp)
                 }
                 Text("Bulk Actions", color = TealAccent, fontSize = 14.sp)
             }
         }
-        // FIXED HERE: Passed navController so clicking routes to detail screen
-        item { EmployeeListItem("Sarah Chen", "Senior Product Manager", "Product & Design", true, navController) }
-        item { EmployeeListItem("Marcus Johnson", "Director of Engineering", "Engineering", true, navController) }
-        item { EmployeeListItem("Elena Rodriguez", "UX Researcher", "Product & Design", false, navController) }
+        
+        items(filteredEmployees.size) { index ->
+            val user = filteredEmployees[index]
+            EmployeeListItem(
+                name = user.name,
+                role = user.role,
+                dept = user.department,
+                navController = navController,
+                isChecked = user.id in selectedUserIds,
+                onCheckedChange = { checked ->
+                    selectedUserIds = if (checked) {
+                        selectedUserIds + user.id
+                    } else {
+                        selectedUserIds - user.id
+                    }
+                }
+            )
+        }
     }
 }
 
 @Composable
-fun EmployeeListItem(name: String, role: String, dept: String, isActive: Boolean, navController: NavController) {
-    var isChecked by remember { mutableStateOf(false) }
-
+fun EmployeeListItem(
+    name: String, 
+    role: String, 
+    dept: String, 
+    navController: NavController,
+    isChecked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
     Card(
         colors = CardDefaults.cardColors(containerColor = CardDark),
         modifier = Modifier.fillMaxWidth().clickable { navController.navigate("hr_employee_detail") }
     ) {
         Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(checked = isChecked, onCheckedChange = { isChecked = it }, colors = CheckboxDefaults.colors(uncheckedColor = TextGray, checkedColor = TealAccent))
+            Checkbox(checked = isChecked, onCheckedChange = onCheckedChange, colors = CheckboxDefaults.colors(uncheckedColor = TextGray, checkedColor = TealAccent))
 
             Surface(shape = CircleShape, color = InputFieldDark, modifier = Modifier.size(48.dp)) {
                 Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.Person, contentDescription = null, tint = TextGray) }
@@ -76,9 +122,6 @@ fun EmployeeListItem(name: String, role: String, dept: String, isActive: Boolean
             Column(modifier = Modifier.weight(1f)) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Text(name, color = TextWhite, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                    Surface(shape = RoundedCornerShape(8.dp), color = if (isActive) Color(0xFF10B981).copy(alpha = 0.2f) else Color(0xFFEF4444).copy(alpha = 0.2f)) {
-                        Text(if (isActive) "ACTIVE" else "ON LEAVE", color = if (isActive) Color(0xFF10B981) else Color(0xFFEF4444), fontSize = 8.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
-                    }
                 }
                 Text(role, color = TextGray, fontSize = 12.sp)
                 Spacer(modifier = Modifier.height(4.dp))

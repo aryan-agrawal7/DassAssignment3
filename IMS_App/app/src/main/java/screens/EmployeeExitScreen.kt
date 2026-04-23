@@ -19,7 +19,7 @@ import androidx.navigation.NavController
 import com.DASS_2024111023_2024117009.ims.ui.theme.*
 
 @Composable
-fun EmployeeExitScreen(navController: NavController) {
+fun EmployeeExitScreen(navController: NavController, onLogout: () -> Unit = {}) {
     var confirmLeave by remember { mutableStateOf(false) }
     var confirmIrreversible by remember { mutableStateOf(false) }
 
@@ -86,7 +86,7 @@ fun EmployeeExitScreen(navController: NavController) {
                 val uid = com.DASS_2024111023_2024117009.ims.MockDatabase.currentUser?.id
                 if (uid != null) com.DASS_2024111023_2024117009.ims.MockDatabase.deleteUser(uid)
                 com.DASS_2024111023_2024117009.ims.MockDatabase.currentUser = null
-                navController.navigate("login") { popUpTo(0) } // Logs out permanently
+                onLogout() // Correctly navigates back to root login screen
             },
             enabled = confirmLeave && confirmIrreversible, // Only enables if both boxes are checked!
             colors = ButtonDefaults.buttonColors(

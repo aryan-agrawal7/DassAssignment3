@@ -11,6 +11,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ChatBubbleOutline
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Person
@@ -111,6 +112,9 @@ fun InstituteNewsScreen(navController: NavController, isAdmin: Boolean = false) 
                         searchQuery = searchQuery,
                         avatarColor = Color(0xFF1E3A8A),
                         onClick = { navController.navigate("news_detail/${news.id}") },
+                        onEdit = {
+                            if (isAdmin) navController.navigate("admin_edit_news/${news.id}")
+                        },
                         onDelete = {
                             if (isAdmin) MockDatabase.deleteNews(news.id)
                         }
@@ -131,7 +135,7 @@ fun FullNewsCard(
     likes: String, comments: String, imageUri: String? = null, isUrgent: Boolean = false,
     isAdmin: Boolean = false, avatarColor: Color,
     searchQuery: String = "",
-    onClick: () -> Unit, onDelete: () -> Unit = {}
+    onClick: () -> Unit, onEdit: () -> Unit = {}, onDelete: () -> Unit = {}
 ) {
     Card(colors = CardDefaults.cardColors(containerColor = CardDark), modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -147,8 +151,14 @@ fun FullNewsCard(
                     }
                 }
                 if (isAdmin) {
-                    IconButton(onClick = onDelete, modifier = Modifier.size(24.dp)) {
-                        Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color(0xFFFCA5A5), modifier = Modifier.size(16.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(onClick = onEdit, modifier = Modifier.size(24.dp)) {
+                            Icon(Icons.Default.Edit, contentDescription = "Edit", tint = TealAccent, modifier = Modifier.size(16.dp))
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        IconButton(onClick = onDelete, modifier = Modifier.size(24.dp)) {
+                            Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color(0xFFFCA5A5), modifier = Modifier.size(16.dp))
+                        }
                     }
                 } else if (isUrgent) {
                     Surface(shape = RoundedCornerShape(12.dp), color = Color(0xFF3F2323)) {
